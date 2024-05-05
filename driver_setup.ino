@@ -3,7 +3,7 @@ void setup_tmc_driver(TMC2209Stepper driver){
   driver.begin();
   driver.toff(4);
   driver.blank_time(24);
-  driver.rms_current(800); // mA
+  driver.rms_current(1500); // mA
   driver.microsteps(MICROSTEPS);
   driver.TCOOLTHRS(0xFFFFF); // 20bit max
   driver.semin(5);

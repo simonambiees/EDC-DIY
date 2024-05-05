@@ -21,7 +21,7 @@
 #define MIN_SPEED      1000
 
 #define STALL_VALUE     100 // [0..255]
-#define MICROSTEPS       16 // 8, 16, 32, 64 or 256
+#define MICROSTEPS       8 // 8, 16, 32, 64 or 256
 
 #define EN_PIN           8 // Enable
 #define FL_DIR_PIN          5 // FL Direction
@@ -81,7 +81,7 @@ void setup() {
   FL_stepper.setSpeedInRevolutionsPerSecond(1);
   FL_stepper.setAccelerationInRevolutionsPerSecondPerSecond(4);
   FR_stepper.setStepsPerRevolution(200*MICROSTEPS);
-  FR_stepper.setSpeedInRevolutionsPerSecond(1);
+  FR_stepper.setSpeedInRevolutionsPerSecond(0.1);
   FR_stepper.setAccelerationInRevolutionsPerSecondPerSecond(4);
   RL_stepper.setStepsPerRevolution(200*MICROSTEPS);
   RL_stepper.setSpeedInRevolutionsPerSecond(1);
@@ -91,7 +91,7 @@ void setup() {
   RR_stepper.setAccelerationInRevolutionsPerSecondPerSecond(4);
   
   FL_stepper.setupRelativeMoveInRevolutions(-2);
-  FR_stepper.setupRelativeMoveInRevolutions(-2);
+  FR_stepper.setupRelativeMoveInRevolutions(-3.6);
   RL_stepper.setupRelativeMoveInRevolutions(-2);
   RR_stepper.setupRelativeMoveInRevolutions(-2);
   while((!FL_stepper.motionComplete()) || (!FR_stepper.motionComplete()))
@@ -109,8 +109,9 @@ void loop() {
   // setup the speed, acceleration and number of steps to move for the 
   // X motor, note: these commands do not start moving yet
   //
+  int dir = 1;
   FL_stepper.setupRelativeMoveInRevolutions(2);
-  FR_stepper.setupRelativeMoveInRevolutions(2);
+  FR_stepper.setupRelativeMoveInRevolutions(3.6*dir);
   RL_stepper.setupRelativeMoveInRevolutions(2);
   RR_stepper.setupRelativeMoveInRevolutions(2);
 
@@ -125,6 +126,7 @@ void loop() {
     RL_stepper.processMovement();
     RR_stepper.processMovement();
   }
+  dir = -1*dir;
 
 
   //
