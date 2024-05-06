@@ -15,17 +15,17 @@
  * - Slow down
  */
 #include <TMCStepper.h>
-#include <SpeedyStepper.h>
+#include <AccelStepper.h>
 
-#define SPEED              0.5 // In Revolutions per Second
+#define MICROSTEPS          16 // 8, 16, 32, 64 or 256
+#define SPEED               2 // In Revolutions per Second
+#define STEPS_PER_REV       200*MICROSTEPS // 200 for 1.8 degree stepper
 
 #define HOMING_REVS         4
-#define REV_PER_DAMPING_STEP 0.1
-#define DAMPING_STEP_COUNT  31 // actual steps minus 1
+#define STEPS_PER_DAMPING   STEPS_PER_REV/10
+#define DAMPING_COUNT  31 // actual damping minus 1
 
-#define STALL_VALUE         50 // [0..255]
-#define MICROSTEPS          16 // 8, 16, 32, 64 or 256
-
+#define STALL_VALUE         25 // [0..255]
 
 #define EN_PIN              8 // Enable
 #define FL_DIR_PIN          5 // FL Direction
@@ -55,10 +55,10 @@ TMC2209Stepper RL_driver(&SERIAL_PORT, R_SENSE, RL_DRIVER_ADDRESS);
 TMC2209Stepper RR_driver(&SERIAL_PORT, R_SENSE, RR_DRIVER_ADDRESS);
 
 // Define steppers for control
-SpeedyStepper FL_stepper;
-SpeedyStepper FR_stepper;
-SpeedyStepper RL_stepper;
-SpeedyStepper RR_stepper;
+AccelStepper FL_stepper = AccelStepper(FL_stepper.DRIVER, FL_STEP_PIN, FL_DIR_PIN);
+AccelStepper FR_stepper = AccelStepper(FR_stepper.DRIVER, FR_STEP_PIN, FR_DIR_PIN);
+AccelStepper RL_stepper = AccelStepper(RL_stepper.DRIVER, RL_STEP_PIN, RL_DIR_PIN);
+AccelStepper RR_stepper = AccelStepper(RR_stepper.DRIVER, RR_STEP_PIN, RR_DIR_PIN);
 
 using namespace TMC2208_n;
 
@@ -78,6 +78,7 @@ volatile bool RR_Stall_State = false;
 volatile int front_Damping_Value = 0;
 volatile int rear_Damping_Value = 0;
 
+volatile bool damping_update_flag = false;
 
 void setup() {
   Serial.begin(250000);         // Init serial port and set baudrate
@@ -89,8 +90,7 @@ void setup() {
   // Set the signal pin as input
   pinMode(FL_Stall_Pin, INPUT);
 
-  // Attach the interrupt to the rising edge of the signal
-  attachInterrupt(digitalPinToInterrupt(FL_Stall_Pin), handleInterrupt, RISING);
+  
 
   SERIAL_PORT.begin(115200);
   setup_tmc_driver(FL_driver);
@@ -98,19 +98,13 @@ void setup() {
   setup_tmc_driver(RL_driver);
   setup_tmc_driver(RR_driver);
 
-  FL_stepper.connectToPins(FL_STEP_PIN, FL_DIR_PIN);
-  FR_stepper.connectToPins(FR_STEP_PIN, FR_DIR_PIN);
-  RL_stepper.connectToPins(RL_STEP_PIN, RL_DIR_PIN);
-  RR_stepper.connectToPins(RR_STEP_PIN, RR_DIR_PIN);
-
   restore_damping_values();
   
-  setup_speedy_stepper(FL_stepper);
-  setup_speedy_stepper(FR_stepper);
-  setup_speedy_stepper(RL_stepper);
-  setup_speedy_stepper(RR_stepper);
+  setup_stepper_front(FL_stepper);
+  setup_stepper_front(FR_stepper);
+  setup_stepper_rear(RL_stepper);
+  setup_stepper_rear(RR_stepper);
   
-
   delay(2000);
 }
 
@@ -126,10 +120,10 @@ void loop() {
         break;
       case '0':
         Serial.println("Stopping all steppers.");
-        FL_stepper.setupStop();
-        FR_stepper.setupStop();
-        RL_stepper.setupStop();
-        RR_stepper.setupStop();
+        FL_stepper.stop();
+        FR_stepper.stop();
+        RL_stepper.stop();
+        RR_stepper.stop();
         break;
       case '1':
         Serial.println("Homing all damping.");
@@ -157,7 +151,7 @@ void loop() {
     Serial.print(front_Damping_Value);
     Serial.print(" Rear Damping: ");
     Serial.print(rear_Damping_Value);
-    Serial.print("FL Stall: ");
+    Serial.print(" FL Stall: ");
     Serial.print(FL_Stall_State);
     Serial.print(" FR Stall: ");
     Serial.print(FR_Stall_State);

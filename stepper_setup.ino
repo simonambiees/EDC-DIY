@@ -1,6 +1,17 @@
-void setup_speedy_stepper(SpeedyStepper stepper){
-  stepper.setStepsPerRevolution(200*MICROSTEPS);
-  stepper.setSpeedInRevolutionsPerSecond(SPEED);
-  stepper.setAccelerationInRevolutionsPerSecondPerSecond(4);
-  // stepper.setCurrentPositionInRevolutions(0);
+void setup_stepper_front(AccelStepper &stepper){
+  stepper.setCurrentPosition(front_Damping_Value*STEPS_PER_DAMPING);
+  stepper.setMaxSpeed(SPEED*STEPS_PER_REV);
+  stepper.setAcceleration(2*STEPS_PER_REV);
+  stepper.setEnablePin(EN_PIN);
+  stepper.setPinsInverted(false, false, true);
+  stepper.enableOutputs();
+}
+
+void setup_stepper_rear(AccelStepper &stepper){
+  stepper.setCurrentPosition(rear_Damping_Value*STEPS_PER_DAMPING);
+  stepper.setMaxSpeed(SPEED*STEPS_PER_REV);
+  stepper.setAcceleration(2*STEPS_PER_REV);
+  stepper.setEnablePin(EN_PIN);
+  stepper.setPinsInverted(false, false, true);
+  stepper.enableOutputs();
 }

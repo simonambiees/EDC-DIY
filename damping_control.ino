@@ -9,33 +9,41 @@ void init_eeprom() {
 }
 
 void home_damping_knobs(){
-  FL_stepper.setupRelativeMoveInRevolutions(HOMING_REVS);
-  FR_stepper.setupRelativeMoveInRevolutions(HOMING_REVS);
-  RL_stepper.setupRelativeMoveInRevolutions(HOMING_REVS);
-  RR_stepper.setupRelativeMoveInRevolutions(HOMING_REVS);
+  // Attach the interrupt to the rising edge of the signal
+  attachInterrupt(digitalPinToInterrupt(FL_Stall_Pin), FL_Stall_Interrupt, RISING);
+  attachInterrupt(digitalPinToInterrupt(FR_Stall_Pin), FR_Stall_Interrupt, RISING);
+  attachInterrupt(digitalPinToInterrupt(RL_Stall_Pin), RL_Stall_Interrupt, RISING);
+  attachInterrupt(digitalPinToInterrupt(RR_Stall_Pin), RR_Stall_Interrupt, RISING);
+
+  FL_stepper.move(HOMING_REVS*STEPS_PER_REV);
+  FR_stepper.move(HOMING_REVS*STEPS_PER_REV);
+  RL_stepper.move(HOMING_REVS*STEPS_PER_REV);
+  RR_stepper.move(HOMING_REVS*STEPS_PER_REV);
 
   // Homing FL
-  while((!FL_Stall_State) && (!FL_stepper.motionComplete()))
+  while((FL_stepper.distanceToGo()))
   {
-    FL_stepper.processMovement();
+    FL_stepper.run();
+    if (FL_Stall_State) {
+      FL_stepper.setCurrentPosition(0);
+      break;
+    }
   }
   if(!FL_Stall_State)
   {
-    // Serial.println("FL Homing Error.");
-    Serial.println("lalala.");
+    Serial.println("FL Homing Error.");
+    FL_stepper.setCurrentPosition(0);
   }
   else
   {
     Serial.println("FL Homing Success.");
-    FL_stepper.setupStop();
-    FL_stepper.setCurrentPositionInSteps(0);
     FL_Stall_State = false;
   }
 
   // Homing FR
-  while((!FR_Stall_State) && (!FR_stepper.motionComplete()))
+  while((!FR_Stall_State) && (FR_stepper.distanceToGo()))
   {
-    FR_stepper.processMovement();
+    FR_stepper.run();
   }
   if(!FR_Stall_State)
   {
@@ -44,15 +52,14 @@ void home_damping_knobs(){
   else
   {
     Serial.println("FR Homing Success.");
-    FR_stepper.setupStop();
-    FR_stepper.setCurrentPositionInSteps(0);
+    FR_stepper.setCurrentPosition(0);
     FR_Stall_State = false;
   }
 
   // Homing RL
-  while((!RL_Stall_State) && (!RL_stepper.motionComplete()))
+  while((!RL_Stall_State) && (RL_stepper.distanceToGo()))
   {
-    RL_stepper.processMovement();
+    RL_stepper.run();
   }
   if(!RL_Stall_State)
   {
@@ -61,15 +68,14 @@ void home_damping_knobs(){
   else
   {
     Serial.println("RL Homing Success.");
-    RL_stepper.setupStop();
-    RL_stepper.setCurrentPositionInSteps(0);
+    RL_stepper.setCurrentPosition(0);
     RL_Stall_State = false;
   }
 
   // Homing RR
-  while((!RR_Stall_State) && (!RR_stepper.motionComplete()))
+  while((!RR_Stall_State) && (RR_stepper.distanceToGo()))
   {
-    RR_stepper.processMovement();
+    RR_stepper.run();
   }
   if(!RR_Stall_State)
   {
@@ -78,10 +84,17 @@ void home_damping_knobs(){
   else
   {
     Serial.println("RR Homing Success.");
-    RR_stepper.setupStop();
-    RR_stepper.setCurrentPositionInSteps(0);
+    RR_stepper.setCurrentPosition(0);
     RR_Stall_State = false;
   }
+  delay(1000);
+  // Detach the interrupt to the signal
+  detachInterrupt(digitalPinToInterrupt(FL_Stall_Pin));
+  detachInterrupt(digitalPinToInterrupt(FR_Stall_Pin));
+  detachInterrupt(digitalPinToInterrupt(RL_Stall_Pin));
+  detachInterrupt(digitalPinToInterrupt(RR_Stall_Pin));
+  
+  damping_update_flag = true;
 }
 
 
@@ -101,17 +114,18 @@ void increase_front_damping(int steps) {
   if (steps < 0) {
     return;
   }
-  if ((front_Damping_Value + steps) > DAMPING_STEP_COUNT) {
-    steps = DAMPING_STEP_COUNT - front_Damping_Value;
+  if ((front_Damping_Value + steps) > DAMPING_COUNT) {
+    steps = DAMPING_COUNT - front_Damping_Value;
   }
   front_Damping_Value += steps;
-  if (front_Damping_Value > DAMPING_STEP_COUNT) {
-    front_Damping_Value = DAMPING_STEP_COUNT;
+  if (front_Damping_Value > DAMPING_COUNT) {
+    front_Damping_Value = DAMPING_COUNT;
   }
   if (front_Damping_Value < 0) {
     front_Damping_Value = 0;
   }
   save_damping_values();
+  damping_update_flag = true;
 }
 
 void decrease_front_damping(int steps) {
@@ -122,30 +136,32 @@ void decrease_front_damping(int steps) {
     steps = front_Damping_Value - 0;
   }
   front_Damping_Value -= steps;
-  if (front_Damping_Value > DAMPING_STEP_COUNT) {
-    front_Damping_Value = DAMPING_STEP_COUNT;
+  if (front_Damping_Value > DAMPING_COUNT) {
+    front_Damping_Value = DAMPING_COUNT;
   }
   if (front_Damping_Value < 0) {
     front_Damping_Value = 0;
   }
   save_damping_values();
+  damping_update_flag = true;
 }
 
 void increase_rear_damping(int steps) {
   if (steps < 0) {
     return;
   }
-  if ((rear_Damping_Value + steps) > DAMPING_STEP_COUNT) {
-    steps = DAMPING_STEP_COUNT - rear_Damping_Value;
+  if ((rear_Damping_Value + steps) > DAMPING_COUNT) {
+    steps = DAMPING_COUNT - rear_Damping_Value;
   }
   rear_Damping_Value += steps;
-  if (rear_Damping_Value > DAMPING_STEP_COUNT) {
-    rear_Damping_Value = DAMPING_STEP_COUNT;
+  if (rear_Damping_Value > DAMPING_COUNT) {
+    rear_Damping_Value = DAMPING_COUNT;
   }
   if (rear_Damping_Value < 0) {
     rear_Damping_Value = 0;
   }
   save_damping_values();
+  damping_update_flag = true;
 }
 
 void decrease_rear_damping(int steps) {
@@ -156,47 +172,60 @@ void decrease_rear_damping(int steps) {
     steps = rear_Damping_Value;
   }
   rear_Damping_Value -= steps;
-  if (rear_Damping_Value > DAMPING_STEP_COUNT) {
-    rear_Damping_Value = DAMPING_STEP_COUNT;
+  if (rear_Damping_Value > DAMPING_COUNT) {
+    rear_Damping_Value = DAMPING_COUNT;
   }
   if (rear_Damping_Value < 0) {
     rear_Damping_Value = 0;
   }
   save_damping_values();
+  damping_update_flag = true;
 }
 
 
 void update_damping_knobs(){
   
-  // digitalWrite(EN_PIN, LOW);
-  FL_stepper.setupMoveInRevolutions(front_Damping_Value*REV_PER_DAMPING_STEP);
-  FR_stepper.setupMoveInRevolutions(front_Damping_Value*REV_PER_DAMPING_STEP);
-  RL_stepper.setupMoveInRevolutions(rear_Damping_Value*REV_PER_DAMPING_STEP);
-  RR_stepper.setupMoveInRevolutions(rear_Damping_Value*REV_PER_DAMPING_STEP);
+  if (damping_update_flag == false)
+  {
+    return;
+  }
+
+  damping_update_flag = false;
+
+
+  FL_stepper.moveTo(front_Damping_Value*STEPS_PER_DAMPING);
+  FR_stepper.moveTo(front_Damping_Value*STEPS_PER_DAMPING);
+  RL_stepper.moveTo(rear_Damping_Value*STEPS_PER_DAMPING);
+  RR_stepper.moveTo(rear_Damping_Value*STEPS_PER_DAMPING);
 
   // Setting FL
-  while((!FL_Stall_State) && (!FL_stepper.motionComplete()))
+  while((FL_stepper.distanceToGo()))
   {
-    FL_stepper.processMovement();
+    FL_stepper.run();
   }
 
   // Setting FR
-  while((!FR_Stall_State) && (!FR_stepper.motionComplete()))
+  while((FR_stepper.distanceToGo()))
   {
-    FR_stepper.processMovement();
+    FR_stepper.run();
   }
 
   // Setting RL
-  while((!RL_Stall_State) && (!RL_stepper.motionComplete()))
+  while((RL_stepper.distanceToGo()))
   {
-    RL_stepper.processMovement();
+    RL_stepper.run();
   }
 
   // Setting RR
-  while((!RR_Stall_State) && (!RR_stepper.motionComplete()))
+  while((RR_stepper.distanceToGo()))
   {
-    RR_stepper.processMovement();
+    RR_stepper.run();
   }
-  // digitalWrite(EN_PIN, HIGH);
+  
+  delay(1000);
+  // FL_stepper.disableOutputs();
+  // FR_stepper.disableOutputs();
+  // RL_stepper.disableOutputs();
+  // RR_stepper.disableOutputs();
 
 }
