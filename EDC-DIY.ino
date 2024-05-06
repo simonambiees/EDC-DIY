@@ -20,7 +20,7 @@
 #define MAX_SPEED        40 // In timer value
 #define MIN_SPEED      1000
 
-#define STALL_VALUE     100 // [0..255]
+#define STALL_VALUE     35 // [0..255]
 #define MICROSTEPS       8 // 8, 16, 32, 64 or 256
 
 #define EN_PIN           8 // Enable
@@ -58,6 +58,12 @@ SpeedyStepper RR_stepper;
 
 using namespace TMC2209_n;
 
+// Pin connected to the signal you want to detect
+const int FL_Stall_Pin = 18;
+
+// Variable to store the state of the signal
+volatile bool FL_Stall_State = false;
+
 void setup() {
   Serial.begin(250000);         // Init serial port and set baudrate
   while(!Serial);               // Wait for serial port to connect
@@ -65,6 +71,11 @@ void setup() {
 
   pinMode(EN_PIN, OUTPUT);
   digitalWrite(EN_PIN, LOW);
+  // Set the signal pin as input
+  pinMode(FL_Stall_Pin, INPUT);
+
+  // Attach the interrupt to the rising edge of the signal
+  attachInterrupt(digitalPinToInterrupt(FL_Stall_Pin), handleInterrupt, RISING);
 
   SERIAL_PORT.begin(115200);
   setup_tmc_driver(FL_driver);
@@ -78,10 +89,10 @@ void setup() {
   RR_stepper.connectToPins(RR_STEP_PIN, RR_DIR_PIN);
   
   FL_stepper.setStepsPerRevolution(200*MICROSTEPS);
-  FL_stepper.setSpeedInRevolutionsPerSecond(1);
+  FL_stepper.setSpeedInRevolutionsPerSecond(0.5);
   FL_stepper.setAccelerationInRevolutionsPerSecondPerSecond(4);
   FR_stepper.setStepsPerRevolution(200*MICROSTEPS);
-  FR_stepper.setSpeedInRevolutionsPerSecond(0.1);
+  FR_stepper.setSpeedInRevolutionsPerSecond(0.5);
   FR_stepper.setAccelerationInRevolutionsPerSecondPerSecond(4);
   RL_stepper.setStepsPerRevolution(200*MICROSTEPS);
   RL_stepper.setSpeedInRevolutionsPerSecond(1);
@@ -90,7 +101,7 @@ void setup() {
   RR_stepper.setSpeedInRevolutionsPerSecond(1);
   RR_stepper.setAccelerationInRevolutionsPerSecondPerSecond(4);
   
-  FL_stepper.setupRelativeMoveInRevolutions(-2);
+  FL_stepper.setupRelativeMoveInRevolutions(-3.6);
   FR_stepper.setupRelativeMoveInRevolutions(-3.6);
   RL_stepper.setupRelativeMoveInRevolutions(-2);
   RR_stepper.setupRelativeMoveInRevolutions(-2);
@@ -102,6 +113,8 @@ void setup() {
     RR_stepper.processMovement();
   }
   delay(2000);
+  
+  FL_stepper.setupRelativeMoveInRevolutions(10);
 }
 
 void loop() {
@@ -110,21 +123,29 @@ void loop() {
   // X motor, note: these commands do not start moving yet
   //
   int dir = 1;
-  FL_stepper.setupRelativeMoveInRevolutions(2);
-  FR_stepper.setupRelativeMoveInRevolutions(3.6*dir);
-  RL_stepper.setupRelativeMoveInRevolutions(2);
-  RR_stepper.setupRelativeMoveInRevolutions(2);
+  // FL_stepper.setupRelativeMoveInRevolutions(3.6*dir);
+  // FR_stepper.setupRelativeMoveInRevolutions(3.6*dir);
+  // RL_stepper.setupRelativeMoveInRevolutions(2);
+  // RR_stepper.setupRelativeMoveInRevolutions(2);
 
 
   //
   // now execute the moves, looping until both motors have finished
   //
-  while((!FL_stepper.motionComplete()) || (!FR_stepper.motionComplete()))
+  while(!FL_Stall_State && ((!FL_stepper.motionComplete()) || (!FR_stepper.motionComplete())))
   {
     FL_stepper.processMovement();
     FR_stepper.processMovement();
     RL_stepper.processMovement();
     RR_stepper.processMovement();
+  }
+  if (FL_Stall_State) {
+    Serial.println("Stall detected");
+    FL_stepper.setupStop();
+    FR_stepper.setupStop();
+    RL_stepper.setupStop();
+    RR_stepper.setupStop();
+    FL_Stall_State = false;
   }
   dir = -1*dir;
 
@@ -133,6 +154,6 @@ void loop() {
   // now that the rotations have finished, delay 1 second before starting 
   // the next move
   //
-  delay(1000);
+  // delay(1000);
 }
 
