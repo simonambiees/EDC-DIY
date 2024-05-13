@@ -21,12 +21,12 @@
 #include <IRremote.h>
 
 #define MICROSTEPS          8 // 8, 16, 32, 64 or 256
-#define SPEED               0.25 // In Revolutions per Second
+#define SPEED               0.1 // In Revolutions per Second
 #define STEPS_PER_REV       200*MICROSTEPS // 200 for 1.8 degree stepper
 
 #define HOMING_REVS         4
 #define STEPS_PER_DAMPING   STEPS_PER_REV/10
-#define DAMPING_COUNT  31 // actual damping minus 1
+#define DAMPING_COUNT  32 // actual damping
 
 #define STALL_VALUE         25 // [0..255]
 

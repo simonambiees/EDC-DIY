@@ -217,17 +217,11 @@ void update_damping_knobs(){
 
   damping_update_flag = false;
 
+  // Sequential Movement
   // FL_stepper.moveTo(front_Damping_Value*STEPS_PER_DAMPING);
   // FR_stepper.moveTo(front_Damping_Value*STEPS_PER_DAMPING);
   // RL_stepper.moveTo(rear_Damping_Value*STEPS_PER_DAMPING);
   // RR_stepper.moveTo(rear_Damping_Value*STEPS_PER_DAMPING);
-  long positions[4];
-  positions[0] = front_Damping_Value*STEPS_PER_DAMPING;
-  positions[1] = front_Damping_Value*STEPS_PER_DAMPING;
-  positions[2] = rear_Damping_Value*STEPS_PER_DAMPING;
-  positions[3] = rear_Damping_Value*STEPS_PER_DAMPING;
-  steppers.moveTo(positions);
-  steppers.runSpeedToPosition();
 
   // // Setting FL
   // while((FL_stepper.distanceToGo()))
@@ -252,6 +246,15 @@ void update_damping_knobs(){
   // {
   //   RR_stepper.run();
   // }
+
+  // Syncronous movement
+  long positions[4];
+  positions[0] = front_Damping_Value*STEPS_PER_DAMPING;
+  positions[1] = front_Damping_Value*STEPS_PER_DAMPING;
+  positions[2] = rear_Damping_Value*STEPS_PER_DAMPING;
+  positions[3] = rear_Damping_Value*STEPS_PER_DAMPING;
+  steppers.moveTo(positions);
+  steppers.runSpeedToPosition();
   
   // delay(1000);
   // FL_stepper.disableOutputs();
