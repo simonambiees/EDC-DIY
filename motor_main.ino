@@ -16,9 +16,12 @@
  */
 #include <TMCStepper.h>
 #include <AccelStepper.h>
+#include <MultiStepper.h>
+#include <TM1637Display.h>
+#include <IRremote.h>
 
-#define MICROSTEPS          16 // 8, 16, 32, 64 or 256
-#define SPEED               2 // In Revolutions per Second
+#define MICROSTEPS          8 // 8, 16, 32, 64 or 256
+#define SPEED               0.25 // In Revolutions per Second
 #define STEPS_PER_REV       200*MICROSTEPS // 200 for 1.8 degree stepper
 
 #define HOMING_REVS         4
@@ -60,6 +63,8 @@ AccelStepper FR_stepper = AccelStepper(FR_stepper.DRIVER, FR_STEP_PIN, FR_DIR_PI
 AccelStepper RL_stepper = AccelStepper(RL_stepper.DRIVER, RL_STEP_PIN, RL_DIR_PIN);
 AccelStepper RR_stepper = AccelStepper(RR_stepper.DRIVER, RR_STEP_PIN, RR_DIR_PIN);
 
+MultiStepper steppers;
+
 using namespace TMC2208_n;
 
 // Pin connected to the signal you want to detect
@@ -80,8 +85,21 @@ volatile int rear_Damping_Value = 0;
 
 volatile bool damping_update_flag = false;
 
+String input_values;
+String new_damping_values = "0000";
+
+#define BUZZER_PIN A7
+
+#define IR_RECEIVE_PIN A15
+#define CLK A13
+#define DIO A14
+
+// create a display object of type TM1637Display
+TM1637Display display = TM1637Display(CLK, DIO);
+
 void setup() {
-  Serial.begin(250000);         // Init serial port and set baudrate
+  Serial.begin(9600);         // Init serial port and set baudrate
+  Serial1.begin(9600);
   while(!Serial);               // Wait for serial port to connect
   Serial.println("\nStart...");
 
@@ -104,6 +122,22 @@ void setup() {
   setup_stepper_front(FR_stepper);
   setup_stepper_rear(RL_stepper);
   setup_stepper_rear(RR_stepper);
+
+  display.clear();
+  display.setBrightness(7); // set the brightness to 7 (0:dimmest, 7:brightest)
+
+  input_values.reserve(4);
+  new_damping_values.reserve(4);
+
+  new_damping_values = String(front_Damping_Value*100+rear_Damping_Value);
+  // Serial1.println(new_damping_values);
+  
+  IrReceiver.begin(IR_RECEIVE_PIN, ENABLE_LED_FEEDBACK); 
+
+  pinMode(BUZZER_PIN, OUTPUT);
+  pinMode(A9, OUTPUT);
+  digitalWrite(A9, LOW);
+
   
   delay(2000);
 }
@@ -119,15 +153,27 @@ void loop() {
         restore_damping_values();
         break;
       case '0':
-        Serial.println("Stopping all steppers.");
-        FL_stepper.stop();
-        FR_stepper.stop();
-        RL_stepper.stop();
-        RR_stepper.stop();
+        Serial.println("Disabled all steppers.");
+        FL_stepper.disableOutputs();
+        FR_stepper.disableOutputs();
+        RL_stepper.disableOutputs();
+        RR_stepper.disableOutputs();
         break;
       case '1':
-        Serial.println("Homing all damping.");
-        home_damping_knobs();
+        // Serial.println("Homing all damping.");
+        // home_damping_knobs();
+        Serial.println("Resetting all damping to 0.");
+        decrease_front_damping(front_Damping_Value);
+        decrease_rear_damping(rear_Damping_Value);
+        damping_update_flag = false;
+        FL_stepper.setCurrentPosition(0);
+        FR_stepper.setCurrentPosition(0);
+        RL_stepper.setCurrentPosition(0);
+        RR_stepper.setCurrentPosition(0);
+        FL_stepper.enableOutputs();
+        FR_stepper.enableOutputs();
+        RL_stepper.enableOutputs();
+        RR_stepper.enableOutputs();
         break;
       case 'q':
         Serial.println("Increasing front damping.");
@@ -147,22 +193,36 @@ void loop() {
         break;
     }
   }
-    Serial.print("Front Damping: ");
-    Serial.print(front_Damping_Value);
-    Serial.print(" Rear Damping: ");
-    Serial.print(rear_Damping_Value);
-    Serial.print(" FL Stall: ");
-    Serial.print(FL_Stall_State);
-    Serial.print(" FR Stall: ");
-    Serial.print(FR_Stall_State);
-    Serial.print(" RL Stall: ");
-    Serial.print(RL_Stall_State);
-    Serial.print(" RR Stall: ");
-    Serial.println(RR_Stall_State);
+
+  char key = pad_get_key();
+
+  interpret_pad_key(key);
+
+  // front_Damping_Value = new_damping_values.substring(0,2).toInt();
+  // rear_Damping_Value = new_damping_values.substring(2,4).toInt();
+  // damping_update_flag = true;
+
+  if (input_values.length() > 0) {
+    display.showNumberDecEx(input_values.toInt(), 0b00001111<<min(4,input_values.length()), true);
+  }else{
+    display.showNumberDecEx(new_damping_values.toInt(), 0b00000000, true);
+  }
+
+  // Serial.print("Front Damping: ");
+  // Serial.print(front_Damping_Value);
+  // Serial.print(" Rear Damping: ");
+  // Serial.print(rear_Damping_Value);
+  // Serial.print(" FL Stall: ");
+  // Serial.print(FL_Stall_State);
+  // Serial.print(" FR Stall: ");
+  // Serial.print(FR_Stall_State);
+  // Serial.print(" RL Stall: ");
+  // Serial.print(RL_Stall_State);
+  // Serial.print(" RR Stall: ");
+  // Serial.println(RR_Stall_State);
 
 
   // Update damping knobs
   update_damping_knobs();
-  delay(500);
 }
 

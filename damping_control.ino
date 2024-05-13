@@ -146,6 +146,18 @@ void decrease_front_damping(int steps) {
   damping_update_flag = true;
 }
 
+void set_front_damping(int value) {
+  if (value < 0) {
+    value = 0;
+  }
+  if (value > DAMPING_COUNT) {
+    value = DAMPING_COUNT;
+  }
+  front_Damping_Value = value;
+  save_damping_values();
+  damping_update_flag = true;
+}
+
 void increase_rear_damping(int steps) {
   if (steps < 0) {
     return;
@@ -182,8 +194,21 @@ void decrease_rear_damping(int steps) {
   damping_update_flag = true;
 }
 
+void set_rear_damping(int value) {
+  if (value < 0) {
+    value = 0;
+  }
+  if (value > DAMPING_COUNT) {
+    value = DAMPING_COUNT;
+  }
+  rear_Damping_Value = value;
+  save_damping_values();
+  damping_update_flag = true;
+}
 
 void update_damping_knobs(){
+  
+  
   
   if (damping_update_flag == false)
   {
@@ -192,37 +217,43 @@ void update_damping_knobs(){
 
   damping_update_flag = false;
 
+  // FL_stepper.moveTo(front_Damping_Value*STEPS_PER_DAMPING);
+  // FR_stepper.moveTo(front_Damping_Value*STEPS_PER_DAMPING);
+  // RL_stepper.moveTo(rear_Damping_Value*STEPS_PER_DAMPING);
+  // RR_stepper.moveTo(rear_Damping_Value*STEPS_PER_DAMPING);
+  long positions[4];
+  positions[0] = front_Damping_Value*STEPS_PER_DAMPING;
+  positions[1] = front_Damping_Value*STEPS_PER_DAMPING;
+  positions[2] = rear_Damping_Value*STEPS_PER_DAMPING;
+  positions[3] = rear_Damping_Value*STEPS_PER_DAMPING;
+  steppers.moveTo(positions);
+  steppers.runSpeedToPosition();
 
-  FL_stepper.moveTo(front_Damping_Value*STEPS_PER_DAMPING);
-  FR_stepper.moveTo(front_Damping_Value*STEPS_PER_DAMPING);
-  RL_stepper.moveTo(rear_Damping_Value*STEPS_PER_DAMPING);
-  RR_stepper.moveTo(rear_Damping_Value*STEPS_PER_DAMPING);
+  // // Setting FL
+  // while((FL_stepper.distanceToGo()))
+  // {
+  //   FL_stepper.run();
+  // }
 
-  // Setting FL
-  while((FL_stepper.distanceToGo()))
-  {
-    FL_stepper.run();
-  }
+  // // Setting FR
+  // while((FR_stepper.distanceToGo()))
+  // {
+  //   FR_stepper.run();
+  // }
 
-  // Setting FR
-  while((FR_stepper.distanceToGo()))
-  {
-    FR_stepper.run();
-  }
+  // // Setting RL
+  // while((RL_stepper.distanceToGo()))
+  // {
+  //   RL_stepper.run();
+  // }
 
-  // Setting RL
-  while((RL_stepper.distanceToGo()))
-  {
-    RL_stepper.run();
-  }
-
-  // Setting RR
-  while((RR_stepper.distanceToGo()))
-  {
-    RR_stepper.run();
-  }
+  // // Setting RR
+  // while((RR_stepper.distanceToGo()))
+  // {
+  //   RR_stepper.run();
+  // }
   
-  delay(1000);
+  // delay(1000);
   // FL_stepper.disableOutputs();
   // FR_stepper.disableOutputs();
   // RL_stepper.disableOutputs();

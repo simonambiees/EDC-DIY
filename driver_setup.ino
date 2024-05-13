@@ -3,7 +3,7 @@ void setup_tmc_driver(TMC2209Stepper &driver){
   driver.begin();
   // driver.toff(4);
   // driver.blank_time(24);
-  driver.rms_current(400); // mA
+  driver.rms_current(900); // mA
   driver.pwm_autoscale(1);
   driver.microsteps(MICROSTEPS);
   driver.TCOOLTHRS(0xFFFFF); // 20bit max
@@ -13,6 +13,6 @@ void setup_tmc_driver(TMC2209Stepper &driver){
   // driver.semax(2);
   // driver.sedn(0b01);
   driver.SGTHRS(STALL_VALUE);
-  // driver.en_spreadCycle(false);
+  // driver.en_spreadCycle(true);
 }
 

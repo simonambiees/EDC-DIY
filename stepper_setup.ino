@@ -5,6 +5,7 @@ void setup_stepper_front(AccelStepper &stepper){
   stepper.setEnablePin(EN_PIN);
   stepper.setPinsInverted(false, false, true);
   stepper.enableOutputs();
+  steppers.addStepper(stepper);
 }
 
 void setup_stepper_rear(AccelStepper &stepper){
@@ -14,4 +15,5 @@ void setup_stepper_rear(AccelStepper &stepper){
   stepper.setEnablePin(EN_PIN);
   stepper.setPinsInverted(false, false, true);
   stepper.enableOutputs();
+  steppers.addStepper(stepper);
 }
